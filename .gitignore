@@ -6,3 +6,4 @@ results/*.logs.txt
 results/**/*.csv
 results/**/*.logs.txt
 results/build.log
+video/public/voz/descartada-*.mp3
