@@ -116,6 +116,9 @@ def generar(tipo: str) -> dict:
 def procesar_solicitud(msg: dict) -> None:
     rid, tipo = msg["reporte_id"], msg["tipo"]
     if tipo == "falla":
+        # Como un reporte real, consume un rato antes de reventar. Sin esta pausa el
+        # proceso moría antes de terminar de responder el 202 del POST que lo encoló.
+        time.sleep(1)
         log.error("reporte %s defectuoso: el proceso termina (simula un OOM)", rid)
         os._exit(1)
     time.sleep(REPORTE_SEG)  # reporte «pesado»

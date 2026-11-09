@@ -78,7 +78,7 @@ const Diagrama: React.FC<Props> = ({ inicioPasos = [-99, -99, -99, -99, -99], es
 };
 
 // ------------------------------------------------------------------ escenas
-const Portada: React.FC = () => {
+export const Portada: React.FC = () => {
   const f = useCurrentFrame();
   const a = entrada(f, 4);
   const b = entrada(f, 16);
@@ -98,7 +98,7 @@ const Portada: React.FC = () => {
   );
 };
 
-const Antes: React.FC = () => {
+export const Antes: React.FC<{ leyenda?: boolean }> = ({ leyenda = true }) => {
   const f = useCurrentFrame();
   const cae = s(4.2);
   const caido = f >= cae;
@@ -136,6 +136,7 @@ const Antes: React.FC = () => {
       <Flecha a={{ x: 290, y: 500 }} b={{ x: 540, y: 500 }} aparece={14} color={caido ? C.rojo : C.grisClaro} />
       <Paquete a={{ x: 1360, y: 860 }} b={{ x: 1360, y: 565 }} desde={s(2.8)} dur={s(1.3)} color={C.rojo} etiqueta="reporte defectuoso" />
       {caido && <Etiqueta x={400} y={430} texto="despachos rechazados" color={C.rojo} fondo={C.rojoSuave} aparece={cae + 6} />}
+      {leyenda && (
       <Leyenda
         lineas={[
           [s(0.3), s(2.8), "Antes, todo vivía en un solo proceso."],
@@ -143,21 +144,24 @@ const Antes: React.FC = () => {
           [s(5.6), s(9.6), "…y con él se cae el despacho de ambulancias."],
         ]}
       />
+      )}
     </Fondo>
   );
 };
 
-const Ahora: React.FC = () => (
+export const Ahora: React.FC<{ leyenda?: boolean }> = ({ leyenda = true }) => (
   <Fondo>
     <Titulo texto="Ahora: microservicios" />
     <Diagrama inicioPasos={[s(0.4), s(2.2), s(4.4), s(5.4), s(8)]} />
-    <Leyenda
+    {leyenda && (
+      <Leyenda
       lineas={[
         [s(0.4), s(4.2), "Un servicio por capacidad de negocio, cada uno dueño de sus datos."],
         [s(4.2), s(7.8), "El despacho, que es crítico, corre en dos réplicas."],
         [s(7.8), s(11.6), "Lo que no es urgente viaja por eventos, en RabbitMQ."],
       ]}
     />
+      )}
   </Fondo>
 );
 
@@ -321,7 +325,7 @@ const ReporteDefectuoso: React.FC = () => {
 type Fila = { exito: number; p95: number | null; sinServicio: number | null };
 const D = datos as unknown as { escenarios: Record<string, { nombre: string; micro: Fila; ut4: Fila }>; p95base: { micro: number; ut4: number } };
 
-const Resultados: React.FC = () => {
+export const Resultados: React.FC<{ leyenda?: boolean }> = ({ leyenda = true }) => {
   const f = useCurrentFrame();
   const escs = ["P1", "P2", "P3"];
   const alto = 330;
@@ -385,6 +389,7 @@ const Resultados: React.FC = () => {
           </div>
         );
       })}
+      {leyenda && (
       <Leyenda
         lineas={[
           [s(0.4), s(5.4), "Con la falla inyectada, el despacho sigue funcionando."],
@@ -395,11 +400,12 @@ const Resultados: React.FC = () => {
           ],
         ]}
       />
+      )}
     </Fondo>
   );
 };
 
-const Cierre: React.FC = () => {
+export const Cierre: React.FC = () => {
   const f = useCurrentFrame();
   return (
     <Fondo>

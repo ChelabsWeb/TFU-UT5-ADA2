@@ -21,3 +21,7 @@ export const C = {
 
 export const FPS = 30;
 export const s = (seg: number) => Math.round(seg * FPS);
+
+import { loadFont as cargarMono } from "@remotion/google-fonts/ChivoMono";
+// Chivo Mono: el cero viene liso de fábrica (sin barra ni punto).
+export const { fontFamily: mono } = cargarMono("normal", { weights: ["400", "500"], subsets: ["latin"] });

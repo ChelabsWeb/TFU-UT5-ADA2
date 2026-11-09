@@ -1,0 +1,117 @@
+{
+ "wsdl": {
+  "archivo": "contracts/ruteo.wsdl",
+  "desde": 41,
+  "lineas": [
+   "      <xsd:element name=\"CalcularETAsRequest\">",
+   "        <xsd:complexType>",
+   "          <xsd:sequence>",
+   "            <xsd:element name=\"destino\" type=\"tns:Punto\"/>",
+   "            <xsd:element name=\"ambulancia\" type=\"tns:Ambulancia\" minOccurs=\"1\" maxOccurs=\"50\"/>",
+   "          </xsd:sequence>",
+   "        </xsd:complexType>",
+   "      </xsd:element>",
+   "",
+   "      <xsd:element name=\"CalcularETAsResponse\">",
+   "        <xsd:complexType>",
+   "          <xsd:sequence>",
+   "            <xsd:element name=\"eta\" type=\"tns:ETA\" minOccurs=\"0\" maxOccurs=\"unbounded\"/>",
+   "          </xsd:sequence>",
+   "        </xsd:complexType>",
+   "      </xsd:element>"
+  ]
+ },
+ "zeep": {
+  "archivo": "services/despacho/app/clientes.py",
+  "desde": 76,
+  "lineas": [
+   "    def calcular_etas(self, destino: tuple[float, float], ambulancias: list[dict], timeout: float) -> dict[str, int]:",
+   "        transporte, servicio = self._cliente()",
+   "        transporte.operation_timeout = timeout",
+   "        respuesta = servicio.CalcularETAs(",
+   "            destino={\"lat\": destino[0], \"lon\": destino[1]},",
+   "            ambulancia=[{\"id\": a[\"id\"], \"lat\": a[\"lat\"], \"lon\": a[\"lon\"]} for a in ambulancias],",
+   "        )"
+  ]
+ },
+ "cb": {
+  "archivo": "services/despacho/app/resiliencia.py",
+  "desde": 143,
+  "lineas": [
+   "    def _registrar(self, exito: bool) -> None:",
+   "        with self._lock:",
+   "            if self._estado == self.SEMIABIERTO:",
+   "                self._prueba_en_curso = False",
+   "                if exito:",
+   "                    self._resultados.clear()",
+   "                    self._cambiar(self.CERRADO)",
+   "                else:",
+   "                    self._abierto_desde = self._reloj()",
+   "                    self._cambiar(self.ABIERTO)",
+   "                return",
+   "            self._resultados.append(exito)",
+   "            fallas = self._resultados.count(False)",
+   "            n = len(self._resultados)",
+   "            if n >= self.minimo_llamadas and fallas / n >= self.umbral_fallas:",
+   "                self._abierto_desde = self._reloj()",
+   "                self._resultados.clear()",
+   "                self._cambiar(self.ABIERTO)"
+  ]
+ },
+ "fallback": {
+  "archivo": "services/despacho/app/main.py",
+  "desde": 115,
+  "lineas": [
+   "    motivo = None",
+   "    try:",
+   "        with bulkhead_ruteo:",
+   "            etas = cb_ruteo.llamar(llamada_soap)",
+   "        if all(a[\"id\"] in etas for a in candidatas):",
+   "            return etas, False, None",
+   "        motivo = \"respuesta incompleta de ruteo\"",
+   "    except CircuitoAbierto:",
+   "        motivo = \"circuito abierto\"",
+   "    except BulkheadLleno:",
+   "        motivo = \"bulkhead de ruteo lleno\"",
+   "    except PlazoAgotado:",
+   "        motivo = \"presupuesto agotado\"",
+   "    except Exception as e:  # noqa: BLE001 - cualquier falla de ruteo activa el fallback",
+   "        motivo = f\"falla de ruteo ({type(e).__name__})\"",
+   "    etas = {a[\"id\"]: eta_estimada_seg(a[\"lat\"], a[\"lon\"], *destino) for a in candidatas}",
+   "    return etas, True, motivo"
+  ]
+ },
+ "cola": {
+  "archivo": "services/reportes/app/main.py",
+  "desde": 58,
+  "lineas": [
+   "def declarar_topologia(canal) -> None:",
+   "    canal.exchange_declare(\"flota.eventos\", \"topic\", durable=True)",
+   "    canal.exchange_declare(\"reportes.dlx\", \"fanout\", durable=True)",
+   "    canal.exchange_declare(\"eventos.dlx\", \"fanout\", durable=True)",
+   "    canal.queue_declare(COLA_DLQ, durable=True, arguments={\"x-queue-type\": \"quorum\"})",
+   "    canal.queue_bind(COLA_DLQ, \"reportes.dlx\")",
+   "    canal.queue_declare(\"reportes.eventos.dlq\", durable=True, arguments={\"x-queue-type\": \"quorum\"})",
+   "    canal.queue_bind(\"reportes.eventos.dlq\", \"eventos.dlx\")",
+   "    canal.queue_declare(",
+   "        COLA_SOLICITUDES,",
+   "        durable=True,",
+   "        arguments={\"x-queue-type\": \"quorum\", \"x-delivery-limit\": 2, \"x-dead-letter-exchange\": \"reportes.dlx\"},",
+   "    )"
+  ]
+ },
+ "falla": {
+  "archivo": "services/reportes/app/main.py",
+  "desde": 116,
+  "lineas": [
+   "def procesar_solicitud(msg: dict) -> None:",
+   "    rid, tipo = msg[\"reporte_id\"], msg[\"tipo\"]",
+   "    if tipo == \"falla\":",
+   "        # Como un reporte real, consume un rato antes de reventar. Sin esta pausa el",
+   "        # proceso moría antes de terminar de responder el 202 del POST que lo encoló.",
+   "        time.sleep(1)",
+   "        log.error(\"reporte %s defectuoso: el proceso termina (simula un OOM)\", rid)",
+   "        os._exit(1)"
+  ]
+ }
+}

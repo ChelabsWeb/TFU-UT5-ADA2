@@ -1,0 +1,107 @@
+[
+  {
+    "escena": "arriba",
+    "cmd": "docker compose ps",
+    "out": "gateway\tUp 16 minutes (healthy)\npostgres\tUp 17 minutes (healthy)\nrabbitmq\tUp 17 minutes (healthy)\nredis\tUp 17 minutes (healthy)\nruteo-mock\tUp About a minute (healthy)\nsvc-despacho-1\tUp 16 minutes (healthy)\nsvc-despacho-2\tUp 22 seconds (healthy)\nsvc-flota\tUp 16 minutes (healthy)\nsvc-reportes\tUp 51 seconds (healthy)\nsvc-ruteo\tUp 17 minutes (healthy)",
+    "nota": null,
+    "t": "14:56:09"
+  },
+  {
+    "escena": "despacho",
+    "cmd": "curl -X POST localhost:8080/api/despachos -d '{\"lat\":-34.90,\"lon\":-56.16}'",
+    "out": "{\n  \"ambulancia_id\": \"8f8a52c3-e871-40fb-a942-4e16f8182c35\",\n  \"eta_seg\": 91,\n  \"eta_estimada\": false,\n  \"replica\": \"svc-despacho-1\"\n}",
+    "nota": null,
+    "t": "14:56:09"
+  },
+  {
+    "escena": "soap",
+    "cmd": "POST svc-ruteo:8000/soap   (CalcularETAs)",
+    "out": "<?xml version='1.0' encoding='UTF-8'?>\n<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:r=\"http://ambulancias.ucu.edu.uy/ruteo\">\n<soap:Body>\n<r:CalcularETAsResponse>\n<r:eta>\n<r:ambulanciaId>AMB-001</r:ambulanciaId>\n<r:segundos>450</r:segundos>\n</r:eta>\n<r:eta>\n<r:ambulanciaId>AMB-002</r:ambulanciaId>\n<r:segundos>538</r:segundos>\n</r:eta>\n</r:CalcularETAsResponse>\n</soap:Body>\n</soap:Envelope>",
+    "nota": null,
+    "t": "14:56:11"
+  },
+  {
+    "escena": "cae",
+    "cmd": "docker compose stop ruteo-mock",
+    "out": " Container ut5-ruteo-mock-1 Stopping \n Container ut5-ruteo-mock-1 Stopped",
+    "nota": null,
+    "t": "14:56:12"
+  },
+  {
+    "escena": "cae",
+    "cmd": "for i in $(seq 10); do curl -X POST .../api/despachos; done",
+    "out": "201  3be068bf…  eta= 106s  eta_estimada=true  svc-despacho-2\n201  da57b64c…  eta= 135s  eta_estimada=true  svc-despacho-1\n201  6055b001…  eta= 157s  eta_estimada=true  svc-despacho-2\n201  0d414f44…  eta= 159s  eta_estimada=true  svc-despacho-1\n201  3a5f8b24…  eta= 168s  eta_estimada=true  svc-despacho-2\n201  c5dc903e…  eta= 170s  eta_estimada=true  svc-despacho-1\n201  7cf2653a…  eta= 171s  eta_estimada=true  svc-despacho-2\n201  8f8a52c3…  eta=  82s  eta_estimada=true  svc-despacho-1\n201  2912655b…  eta= 182s  eta_estimada=true  svc-despacho-2\n201  eea3f4c1…  eta= 183s  eta_estimada=true  svc-despacho-1",
+    "nota": null,
+    "t": "14:56:16"
+  },
+  {
+    "escena": "cae",
+    "cmd": "docker compose logs svc-despacho | grep circuito | sort",
+    "out": "2026-11-09 17:56:16,087 svc-despacho-2 WARNING circuito ruteo: CERRADO -> ABIERTO\n2026-11-09 17:56:16,506 svc-despacho-1 WARNING circuito ruteo: CERRADO -> ABIERTO",
+    "nota": null,
+    "t": "14:56:16"
+  },
+  {
+    "escena": "vuelve",
+    "cmd": "docker compose start ruteo-mock",
+    "out": " Container ut5-ruteo-mock-1 Starting \n Container ut5-ruteo-mock-1 Started",
+    "nota": null,
+    "t": "14:56:17"
+  },
+  {
+    "escena": "vuelve",
+    "cmd": "curl -X POST localhost:8080/api/despachos ...",
+    "out": "{\n  \"ambulancia_id\": \"0d414f44-bea2-4a83-99cd-759732b09c4f\",\n  \"eta_seg\": 179,\n  \"eta_estimada\": false,\n  \"replica\": \"svc-despacho-1\"\n}",
+    "nota": "30 s después",
+    "t": "14:56:50"
+  },
+  {
+    "escena": "vuelve",
+    "cmd": "docker compose logs svc-despacho | grep circuito | sort",
+    "out": "2026-11-09 17:56:49,472 svc-despacho-2 WARNING circuito ruteo: ABIERTO -> SEMIABIERTO\n2026-11-09 17:56:49,534 svc-despacho-2 WARNING circuito ruteo: SEMIABIERTO -> CERRADO\n2026-11-09 17:56:49,732 svc-despacho-1 WARNING circuito ruteo: ABIERTO -> SEMIABIERTO\n2026-11-09 17:56:49,827 svc-despacho-1 WARNING circuito ruteo: SEMIABIERTO -> CERRADO",
+    "nota": null,
+    "t": "14:56:50"
+  },
+  {
+    "escena": "reporte",
+    "cmd": "curl -X POST localhost:8080/api/reportes -d '{\"tipo\":\"falla\"}'",
+    "out": "{\n  \"id\": \"35b30180-6189-4ae5-b8cf-9734e8102f58\",\n  \"estado\": \"PENDIENTE\",\n  \"consultar\": \"/api/reportes/35b30180-6189-4ae5-b8cf-9734e8102f58\"\n}",
+    "nota": null,
+    "t": "14:56:51"
+  },
+  {
+    "escena": "reporte",
+    "cmd": "curl -X POST .../api/despachos   # mientras reportes se cae",
+    "out": "HTTP 201",
+    "nota": null,
+    "t": "14:56:53"
+  },
+  {
+    "escena": "reporte",
+    "cmd": "curl localhost:8080/api/reportes/35b30180…",
+    "out": "{\n  \"id\": \"35b30180-6189-4ae5-b8cf-9734e8102f58\",\n  \"tipo\": \"falla\",\n  \"estado\": \"FALLIDO\"\n}",
+    "nota": null,
+    "t": "14:57:00"
+  },
+  {
+    "escena": "reporte",
+    "cmd": "docker inspect -f '{{.RestartCount}}' svc-reportes   # reinicios en esta prueba",
+    "out": "3",
+    "nota": null,
+    "t": "14:57:00"
+  },
+  {
+    "escena": "replica",
+    "cmd": "docker kill svc-despacho-2",
+    "out": "svc-despacho-2",
+    "nota": null,
+    "t": "14:57:08"
+  },
+  {
+    "escena": "replica",
+    "cmd": "for i in $(seq 20); do curl -X POST .../api/despachos; done",
+    "out": "201 201 201 201 201 201 201 201 201 201 201 201 201 201 201 201 201 201 201 201",
+    "nota": null,
+    "t": "14:57:11"
+  }
+]

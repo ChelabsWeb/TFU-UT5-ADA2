@@ -98,3 +98,13 @@ Carga: 20 despachos/s durante 60 s, 3 corridas por escenario, mediana. Mismos l�
 - **Sin Transactional Outbox**: si RabbitMQ está caído en el momento de publicar, el evento se pierde (queda en el log). La proyección de reportes puede quedar desactualizada. Es la mejora documentada para producción.
 - Una sola instancia de PostgreSQL (con separación lógica por esquema y usuario): es un punto de falla compartido.
 - El baseline UT4 es una reconstrucción mínima del monolito descrito en el informe, no el código original.
+
+## Video
+
+`docs/entrega/UT5 Grupo4 - demo narrada.mp4` (2:38, con voz): arquitectura, demo del sistema corriendo y código.
+La terminal del video no está armada a mano: reproduce lo que grabó `scripts/grabar-demo.py` corriendo contra el stack levantado (`video/src/demo.json`), y los paneles de código se copian del repo con `video/scripts/fragmentos.py`. La voz sale de `video/scripts/voz.py` (una sola toma, ElevenLabs).
+
+```bash
+docker compose up -d --wait && python scripts/grabar-demo.py   # vuelve a grabar la demo
+cd video && npm install && npm run render                     # out/ut5-narrado.mp4
+```
