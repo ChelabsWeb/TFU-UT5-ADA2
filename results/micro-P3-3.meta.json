@@ -1,0 +1,4 @@
+{"arq":"micro","escenario":"P3","corrida":3,"t0":1794183544.558,"duracion":60,"rps":20,
+ "t_inyeccion":1794183559.676,"t_reparacion":null,
+ "reporte_normal":"","reporte_defectuoso":"",
+ "dlq":"0","reinicios_svc-reportes":"0"}

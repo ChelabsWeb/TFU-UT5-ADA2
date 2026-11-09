@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Contrato SOAP 1.1 (document/literal) de svc-ruteo.
+  Reemplaza a la operación REST de la UT4  GET /api/ambulancias/{id}/eta  (JSON).
+  Diferencia de diseño: es una operación por lote (todas las candidatas en un
+  solo mensaje) para no pagar N viajes por la red (falacia «la latencia es cero»).
+-->
+<definitions name="RuteoService"
+             targetNamespace="http://ambulancias.ucu.edu.uy/ruteo"
+             xmlns="http://schemas.xmlsoap.org/wsdl/"
+             xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns:tns="http://ambulancias.ucu.edu.uy/ruteo"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+  <types>
+    <xsd:schema targetNamespace="http://ambulancias.ucu.edu.uy/ruteo"
+                elementFormDefault="qualified">
+
+      <xsd:complexType name="Punto">
+        <xsd:sequence>
+          <xsd:element name="lat" type="xsd:double"/>
+          <xsd:element name="lon" type="xsd:double"/>
+        </xsd:sequence>
+      </xsd:complexType>
+
+      <xsd:complexType name="Ambulancia">
+        <xsd:sequence>
+          <xsd:element name="id" type="xsd:string"/>
+          <xsd:element name="lat" type="xsd:double"/>
+          <xsd:element name="lon" type="xsd:double"/>
+        </xsd:sequence>
+      </xsd:complexType>
+
+      <xsd:complexType name="ETA">
+        <xsd:sequence>
+          <xsd:element name="ambulanciaId" type="xsd:string"/>
+          <xsd:element name="segundos" type="xsd:int"/>
+        </xsd:sequence>
+      </xsd:complexType>
+
+      <xsd:element name="CalcularETAsRequest">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="destino" type="tns:Punto"/>
+            <xsd:element name="ambulancia" type="tns:Ambulancia" minOccurs="1" maxOccurs="50"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+
+      <xsd:element name="CalcularETAsResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="eta" type="tns:ETA" minOccurs="0" maxOccurs="unbounded"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:schema>
+  </types>
+
+  <message name="CalcularETAsInput">
+    <part name="parameters" element="tns:CalcularETAsRequest"/>
+  </message>
+  <message name="CalcularETAsOutput">
+    <part name="parameters" element="tns:CalcularETAsResponse"/>
+  </message>
+
+  <portType name="RuteoPortType">
+    <operation name="CalcularETAs">
+      <documentation>Calcula el tiempo estimado de llegada (segundos) de cada ambulancia al destino.</documentation>
+      <input message="tns:CalcularETAsInput"/>
+      <output message="tns:CalcularETAsOutput"/>
+    </operation>
+  </portType>
+
+  <binding name="RuteoBinding" type="tns:RuteoPortType">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <operation name="CalcularETAs">
+      <soap:operation soapAction="http://ambulancias.ucu.edu.uy/ruteo/CalcularETAs"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+  </binding>
+
+  <service name="RuteoService">
+    <port name="RuteoPort" binding="tns:RuteoBinding">
+      <soap:address location="http://svc-ruteo:8000/soap"/>
+    </port>
+  </service>
+</definitions>

@@ -1,0 +1,56 @@
+@startuml
+title Registrar despacho (caso normal y falla de ruteo)
+actor Operador
+participant "API Gateway" as GW
+participant "svc-despacho" as D
+participant "CircuitBreaker\n(ruteo)" as CB
+participant "svc-flota" as F
+database "Redis" as R
+participant "svc-ruteo\n(SOAP)" as RT
+participant "Proveedor\nde ruteo" as P
+queue "RabbitMQ" as MQ
+participant "svc-reportes" as REP
+
+Operador -> GW : POST /api/despachos {ubicación, prioridad}
+GW -> D : POST /despachos
+D -> F : GET /ambulancias?estado=DISPONIBLE\n[timeout 500 ms, retry x2]
+F -> R : get(disponibles)
+alt cache hit
+  R --> F : candidatas
+else cache miss
+  F -> F : SELECT en db-flota
+  F -> R : set(disponibles, TTL)
+end
+F --> D : candidatas [A1..An]
+
+D -> CB : CalcularETAs(candidatas, destino)
+alt circuito CERRADO
+  CB -> RT : SOAP CalcularETAs (lote)\n[timeout 800 ms, retry x2]
+  RT -> P : GET /routes
+  P --> RT : tiempos
+  RT --> CB : CalcularETAsResponse (XML)
+  CB --> D : ETAs exactas
+else circuito ABIERTO o timeout
+  CB --> D : falla rápida (sin llamar a ruteo)
+  D -> D : Fallback: ETA por Haversine\n(eta_estimada = true)
+end
+
+D -> D : elegir ambulancia con menor ETA
+D -> F : PATCH /ambulancias/{id}/estado EN_SERVICIO\nIdempotency-Key: despachoId
+alt estaba DISPONIBLE
+  F -> F : UPDATE condicional
+  F -> R : invalidar(disponibles)
+  F --> D : 200 OK
+else ya reservada por otro
+  F --> D : 409 Conflict
+  D -> D : probar con la siguiente candidata
+end
+D -> D : guardar despacho
+D --> GW : 201 {ambulancia, eta, eta_estimada}
+GW --> Operador : 201 Created
+
+D ->> MQ : DespachoRegistrado (publisher confirms)
+F ->> MQ : AmbulanciaEstadoCambiado
+MQ ->> REP : eventos (ack manual, DLQ)
+REP -> REP : actualizar proyección (idempotente)
+@enduml

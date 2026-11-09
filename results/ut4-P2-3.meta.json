@@ -1,0 +1,4 @@
+{"arq":"ut4","escenario":"P2","corrida":3,"t0":1794183178.177,"duracion":60,"rps":20,
+ "t_inyeccion":1794183193.286,"t_reparacion":null,
+ "reporte_normal":"PENDIENTE","reporte_defectuoso":"PENDIENTE",
+ "dlq":"","reinicios_monolito":"1"}

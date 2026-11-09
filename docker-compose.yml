@@ -1,0 +1,128 @@
+# UT5 · Microservicios con comunicación asíncrona por eventos
+#   docker compose up -d --build      -> http://localhost:8080 (header X-API-Key: clave-demo-ut5)
+name: ut5
+
+x-limites: &limites
+  cpus: "1.0"
+  mem_limit: 384m
+
+x-servicio: &servicio
+  <<: *limites
+  restart: on-failure
+  networks: [backend]
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+    interval: 3s
+    timeout: 3s
+    retries: 20
+    start_period: 5s
+
+services:
+  # ------------------------------------------------------------ infraestructura
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ambulancias
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin_pw
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d ambulancias"]
+      interval: 2s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      retries: 30
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports: ["15672:15672"]          # consola: guest / guest
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 3s
+      retries: 40
+
+  # ------------------------------------------------------------ proveedor externo (mock)
+  ruteo-mock:
+    <<: *servicio
+    build: ./ruteo-mock
+    env_file: config/ruteo-mock.env
+    networks: [proveedor]           # solo svc-ruteo llega a esta red
+
+  # ------------------------------------------------------------ microservicios
+  svc-ruteo:
+    <<: *servicio
+    build: { context: ., dockerfile: services/ruteo/Dockerfile }
+    env_file: config/ruteo.env
+    networks: [backend, proveedor]
+
+  svc-flota:
+    <<: *servicio
+    build: { context: ., dockerfile: services/flota/Dockerfile }
+    env_file: config/flota.env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  svc-despacho-1:
+    <<: *servicio
+    build: { context: ., dockerfile: services/despacho/Dockerfile }
+    image: ut5-svc-despacho
+    env_file: config/despacho.env
+    environment: { REPLICA: svc-despacho-1 }
+    depends_on: &deps-despacho
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      svc-flota: { condition: service_healthy }
+
+  svc-despacho-2:
+    <<: *servicio
+    image: ut5-svc-despacho
+    env_file: config/despacho.env
+    environment: { REPLICA: svc-despacho-2 }
+    depends_on:
+      <<: *deps-despacho
+      svc-despacho-1: { condition: service_started }   # reutiliza la imagen construida por la 1
+
+  svc-reportes:
+    <<: *servicio
+    build: { context: ., dockerfile: services/reportes/Dockerfile }
+    env_file: config/reportes.env
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  # ------------------------------------------------------------ entrada
+  gateway:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports: ["8080:8080"]
+    networks: [frontend, backend]
+    depends_on:
+      svc-despacho-1: { condition: service_healthy }
+      svc-despacho-2: { condition: service_healthy }
+      svc-flota: { condition: service_healthy }
+      svc-reportes: { condition: service_healthy }
+      svc-ruteo: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 2s
+      retries: 20
+
+networks:
+  frontend:
+    name: ut5_frontend
+  backend:
+    internal: true
+  proveedor:
+    internal: true

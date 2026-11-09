@@ -1,0 +1,30 @@
+# Baseline «UT4»: monolito en capas (un proceso, SQLite, BackgroundTasks) + proveedor de ruteo.
+#   docker compose -f docker-compose.ut4.yml up -d --build   -> http://localhost:8090
+# Mismos límites de recursos que cada servicio de la versión distribuida.
+name: ut4
+
+services:
+  ruteo-mock:
+    build: ./ruteo-mock
+    env_file: config/ruteo-mock.env
+    cpus: "1.0"
+    mem_limit: 384m
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 3s
+      retries: 20
+
+  monolito:
+    build: ./baseline-ut4
+    env_file: config/baseline-ut4.env
+    cpus: "1.0"
+    mem_limit: 384m
+    restart: on-failure
+    ports: ["18090:8000"]
+    depends_on:
+      ruteo-mock: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 3s
+      retries: 20

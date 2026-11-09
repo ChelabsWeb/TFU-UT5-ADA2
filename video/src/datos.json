@@ -1,0 +1,47 @@
+{
+ "escenarios": {
+  "P1": {
+   "nombre": "cae el proveedor",
+   "micro": {
+    "exito": 1.0,
+    "p95": 121.74412575000001,
+    "sinServicio": 0
+   },
+   "ut4": {
+    "exito": 0.526173285198556,
+    "p95": 1514.3585181999986,
+    "sinServicio": 25
+   }
+  },
+  "P2": {
+   "nombre": "reporte defectuoso",
+   "micro": {
+    "exito": 1.0,
+    "p95": 123.42273614999999,
+    "sinServicio": 0
+   },
+   "ut4": {
+    "exito": 0.9783513738551207,
+    "p95": 95.9974598,
+    "sinServicio": 1
+   }
+  },
+  "P3": {
+   "nombre": "cae una instancia",
+   "micro": {
+    "exito": 0.9983347210657785,
+    "p95": 223.8298537999983,
+    "sinServicio": 0
+   },
+   "ut4": {
+    "exito": 0.47793505412156534,
+    "p95": 106.29822479999999,
+    "sinServicio": 32
+   }
+  }
+ },
+ "p95base": {
+  "micro": 121.70788945,
+  "ut4": 95.452298
+ }
+}
